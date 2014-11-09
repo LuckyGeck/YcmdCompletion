@@ -1,0 +1,16 @@
+[
+    {
+        "caption": "Ycmd: Create HMAC keys",
+        "command": "ycmd_create_hmac_pair"
+    },
+    {
+        "caption": "Ycmd: Settings - Default",
+        "command": "open_file",
+        "args": { "file": "${packages}/YcmdCompletion/YcmdCompletion.sublime-settings" }
+    },
+    {
+        "caption": "Ycmd: Settings - User",
+        "command": "open_file",
+        "args": { "file": "${packages}/User/YcmdCompletion.sublime-settings" }
+    }
+]

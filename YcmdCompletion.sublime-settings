@@ -1,0 +1,26 @@
+{
+  /* [1] Server URL, where your YCMD server is started */
+  "ycmd_server": "http://127.0.0.1",
+  /* [2] Server's port*/
+  "ycmd_port": 8080,
+
+  /* [3] You can set a rule for filepath modification */
+  /*
+    YCMD server will be asked to work with cur_file_path.replace(from, to)
+    It can be usefull if using remote ycmd server and remote project's
+    location has different prefix from local's
+  */
+
+  /* [!UNCOMMENT THIS, IF NEEDED!] */
+  // "ycmd_filepath_replace": {
+  //   "from": "/Users/username/",
+  //   "to": "/place/home/username/",
+  // },
+
+  /* [3] HMAC is needed to securely connect to YCMD server */
+  /*
+    You should have the same HMAC settings in sublime text and in ycmd settings.
+    To generate new HMAC you can use [Command Palette] -> "Ycmd: Create HMAC keys"
+  */
+  "HMAC": "_some_base64_key_here_==",
+}
