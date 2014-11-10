@@ -136,7 +136,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         '''Called when the file is finished loading'''
         if not is_cpp(view) or view.is_scratch():
             return
-        filepath = view.file_name()
+        filepath = get_file_path()
         content = view.substr(sublime.Region(0, view.size()))
         t = Thread(None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
         t.daemon = True
@@ -167,7 +167,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             self.ready_from_defer = False
             return (cpl, sublime.INHIBIT_WORD_COMPLETIONS | sublime.INHIBIT_EXPLICIT_COMPLETIONS)
 
-        filepath = view.file_name()
+        filepath = get_file_path()
         row, col = view.rowcol(locations[0])
         content = view.substr(sublime.Region(0, view.size()))
         t = Thread(None, complete_func, 'CompleteAsync',
