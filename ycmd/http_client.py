@@ -81,14 +81,9 @@ class YcmdClient(object):
         request_json = {'filepath': extra_conf_filename}
         self.PostToHandler(EXTRA_CONF_HANDLER, request_json)
 
-    def _ExtraHeaders(self, request_body=None):
-        return {HMAC_HEADER: self._HmacForBody(request_body)}
-
-    def _HmacForBody(self, request_body=None):
-        if not request_body:
-            request_body = ''
-        hexhmac = CreateHexHmac(request_body, self._hmac_secret)
-        return b64encode(bytes(hexhmac, 'utf-8'))
+    def _HmacForRequest(self, method, path, body):
+        return b64encode(CreateRequestHmac(method, path, body,
+                         self._hmac_secret))
 
     def _BuildUri(self, handler):
         return self._server_location + handler
@@ -99,18 +94,29 @@ class YcmdClient(object):
         if isinstance(data, collections.Mapping):
             req.add_header('content-type', 'application/json')
             data = ToUtf8Json(data)
-        data = bytes(data, 'utf-8')
-        req.add_header(HMAC_HEADER, self._HmacForBody(data))
-        req.data = data
+        req.add_header(HMAC_HEADER, self._HmacForRequest(method, handler, data))
+        req.data = bytes(data, 'utf-8')
         readData = urlopen(req).read().decode('utf-8')
         return readData
 
 
-def CreateHexHmac(content, hmac_secret):
+def CreateRequestHmac(method, path, body, hmac_secret):
+    method = bytes(method, 'utf-8')
+    path = bytes(path, 'utf-8')
+    body = bytes(body, 'utf-8')
+    method_hmac = CreateHmac(method, hmac_secret)
+    path_hmac = CreateHmac(path, hmac_secret)
+    body_hmac = CreateHmac(body, hmac_secret)
+
+    joined_hmac_input = b''.join((method_hmac, path_hmac, body_hmac))
+    return CreateHmac(joined_hmac_input, hmac_secret)
+
+
+def CreateHmac(content, hmac_secret):
     # Must ensure that hmac_secret is str and not unicode
     return hmac.new(hmac_secret,
                     msg=content,
-                    digestmod=hashlib.sha256).hexdigest()
+                    digestmod=hashlib.sha256).digest()
 
 
 def BuildRequestData(filepath='',
