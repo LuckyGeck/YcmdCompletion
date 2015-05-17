@@ -176,7 +176,11 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         t.start()
 
     def _complete(self, data):
-        jsonResp = loads(data)
+        try:
+            jsonResp = loads(data)
+        except:
+            print(NOTIFY_ERROR_MSG.format("json '{}'".format(data)))
+            return
         proposals = list(self.generate_completion_items(jsonResp['completions']))
 
         if proposals:
@@ -195,7 +199,11 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         })
 
     def _on_errors(self, data):
-        data = loads(data)
+        try:
+            data = loads(data)
+        except:
+            print(NOTIFY_ERROR_MSG.format("json '{}'".format(data)))
+            return
         filepath = get_file_path()
         self.highlight_problems(active_view(),
                                 [_ for _ in data
