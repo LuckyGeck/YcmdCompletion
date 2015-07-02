@@ -23,4 +23,9 @@
     To generate new HMAC you can use [Command Palette] -> "Ycmd: Create HMAC keys"
   */
   "HMAC": "_some_base64_key_here_==",
+
+  /*If you want the Plugin to automatically launch a local ycmd-Server set to 1 
+    and specify the path to your ycmd installation. for ex. /home/USERNAME/ycmd/ycmd */
+  "use_auto_start_localserver": 0,
+  "ycmd_path": ""
 }
