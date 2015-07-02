@@ -71,10 +71,11 @@ def read_settings():
     settings["use_auto"] = s.get("use_auto_start_localserver", 0)
     settings["ycmd_path"] = s.get("ycmd_path", "")
 
-    if not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==":
+    if (not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==") and settings['use_auto'] == 0:
         sublime.status_message(NO_HMAC_MESSAGE)
-    else:
+    elif(settings['use_auto'] == 0):
         settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
+    
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
     if replace:
