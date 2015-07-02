@@ -48,7 +48,7 @@ class YcmdClient(object):
                          ycmd_path,
                          '--port={0}'.format(server_port),
                          '--options_file={0}'.format(options_file.name),
-                         '--idle_suicide_seconds={0}'.format(60)]
+                         '--idle_suicide_seconds={0}'.format(3600)]
             child_handle = subprocess.Popen(ycmd_args)
             return cls(child_handle, "http://127.0.0.1", server_port, hmac_secret)
 
