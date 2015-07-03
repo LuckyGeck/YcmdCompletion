@@ -34,7 +34,8 @@ LOCAL_SERVER = None
 def start_server(settings):
     global LOCAL_SERVER
     ycmd_path = settings["ycmd_path"]
-    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path)
+    default_settings_path = settings["default_settings_path"]
+    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path, default_settings_path)
     server_pid = str(LOCAL_SERVER._popen_handle.pid)
     st_pid = str(os.getpid())
     subprocess.Popen(['python', os.path.dirname(
@@ -70,6 +71,8 @@ def read_settings():
     settings["hmac"] = s.get("HMAC", '')
     settings["use_auto"] = s.get("use_auto_start_localserver", 0)
     settings["ycmd_path"] = s.get("ycmd_path", "")
+    settings["default_settings_path"] = s.get(
+        "default_settings_path", settings["ycmd_path"] + "/default_settings.json")
 
     if (not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==") and settings['use_auto'] == 0:
         sublime.status_message(NO_HMAC_MESSAGE)

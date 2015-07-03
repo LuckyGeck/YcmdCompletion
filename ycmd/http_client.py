@@ -35,10 +35,11 @@ class YcmdClient(object):
         self._server_location = "{}:{}".format(server, port)
 
     @classmethod
-    def StartYcmdAndReturnHandle(cls, ycmd_path):
-        prepared_options = DefaultSettings(ycmd_path)
+    def StartYcmdAndReturnHandle(cls, ycmd_path, default_settings_path):
+        prepared_options = json.load(open(default_settings_path))
         hmac_secret = os.urandom(16)
-        prepared_options['hmac_secret'] = b64encode(hmac_secret).decode('utf-8')
+        prepared_options['hmac_secret'] = b64encode(
+            hmac_secret).decode('utf-8')
         server_port = GetUnusedLocalhostPort()
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as options_file:
             json.dump(prepared_options, options_file)
@@ -203,11 +204,6 @@ def CppSemanticCompletionResults(server, path, row, col, contents, filetype='cpp
                                             line_num=row,
                                             column_num=col,
                                             contents=contents)
-
-
-def DefaultSettings(ycmd_path):
-    default_options_path = os.path.join(ycmd_path, "default_settings.json")
-    return json.load(open(default_options_path))
 
 
 def GetUnusedLocalhostPort():
