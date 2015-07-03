@@ -36,10 +36,9 @@ class YcmdClient(object):
 
     @classmethod
     def StartYcmdAndReturnHandle(cls, ycmd_path):
-        prepared_options = DefaultSettings()
+        prepared_options = DefaultSettings(ycmd_path)
         hmac_secret = os.urandom(16)
-        prepared_options['hmac_secret'] = b64encode(
-            hmac_secret).decode('utf-8')
+        prepared_options['hmac_secret'] = b64encode(hmac_secret).decode('utf-8')
         server_port = GetUnusedLocalhostPort()
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as options_file:
             json.dump(prepared_options, options_file)
@@ -50,7 +49,7 @@ class YcmdClient(object):
                          '--options_file={0}'.format(options_file.name),
                          '--idle_suicide_seconds={0}'.format(3600)]
             child_handle = subprocess.Popen(ycmd_args)
-            return cls(child_handle, "http://127.0.0.1", server_port, hmac_secret)
+            return cls(child_handle, "http://localhost", server_port, hmac_secret)
 
     @classmethod
     def GenerateHMAC(cls):
@@ -206,13 +205,9 @@ def CppSemanticCompletionResults(server, path, row, col, contents, filetype='cpp
                                             contents=contents)
 
 
-def DefaultSettings():
-    default_options_path = os.path.join(DIR_OF_THIS_SCRIPT,
-                                        '..',
-                                        'default_settings_ycmd.json')
-
-    with open(default_options_path) as f:
-        return json.loads(f.read())
+def DefaultSettings(ycmd_path):
+    default_options_path = os.path.join(ycmd_path, "default_settings.json")
+    return json.load(open(default_options_path))
 
 
 def GetUnusedLocalhostPort():

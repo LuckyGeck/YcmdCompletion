@@ -26,32 +26,32 @@ NO_HMAC_MESSAGE = "[Ycmd] You should generate HMAC throug the menu before using 
 NOTIFY_ERROR_MSG = "[Ycmd][Notify] Error {}"
 PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
-loc_server = None
+LOCAL_SERVER = None
 
-# Edit to support automatic start of a ycmd server instance at 127.0.0.1:XXXX
+# Edit to support automatic start of a ycmd server instance at http://localhost:XXXX
 
 
 def start_server(settings):
-    global loc_server
+    global LOCAL_SERVER
     ycmd_path = settings["ycmd_path"]
-    loc_server = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path)
-    server_pid = str(loc_server._popen_handle.pid)
+    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path)
+    server_pid = str(LOCAL_SERVER._popen_handle.pid)
     st_pid = str(os.getpid())
     subprocess.Popen(['python', os.path.dirname(
         os.path.abspath(__file__)) + "/ycmd/monitor.py", st_pid, server_pid])
-    if(loc_server.IsAlive()):
-        print("[Ycmd] Local Server started at : " +
-              str(loc_server._server_location))
+    if LOCAL_SERVER.IsAlive():
+        print("[Ycmd] Local Server started at : {}".format(
+            LOCAL_SERVER._server_location))
 
 
 def plugin_loaded():
     settings = read_settings()
-    if (settings['use_auto']):
+    if settings['use_auto']:
         start_server(settings)
 
 
 def plugin_unload():
-    loc_server.Shutdown()
+    LOCAL_SERVER.Shutdown()
 
 
 def open_user_settings():
@@ -65,7 +65,7 @@ def active_view():
 def read_settings():
     s = sublime.load_settings(SETTINGS_NAME)
     settings = dict()
-    settings["server"] = s.get("ycmd_server", "http://127.0.0.1")
+    settings["server"] = s.get("ycmd_server", "http://localhost")
     settings["port"] = s.get("ycmd_port", 8080)
     settings["hmac"] = s.get("HMAC", '')
     settings["use_auto"] = s.get("use_auto_start_localserver", 0)
@@ -73,9 +73,9 @@ def read_settings():
 
     if (not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==") and settings['use_auto'] == 0:
         sublime.status_message(NO_HMAC_MESSAGE)
-    elif(settings['use_auto'] == 0):
+    elif settings['use_auto'] == 0:
         settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
-    
+
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
     if replace:
@@ -118,10 +118,10 @@ def get_file_path(filepath=None):
 
 def notify_func(filepath, content, callback):
     settings = read_settings()
-    if (settings['use_auto']):
-        server = 'http://127.0.0.1'
-        port = loc_server._port
-        hmac = loc_server._hmac_secret
+    if settings['use_auto']:
+        server = 'http://localhost'
+        port = LOCAL_SERVER._port
+        hmac = LOCAL_SERVER._hmac_secret
     else:
         server = settings["server"]
         port = settings["port"]
@@ -139,10 +139,10 @@ def notify_func(filepath, content, callback):
 
 def complete_func(filepath, row, col, content, error_cb, data_cb):
     settings = read_settings()
-    if (settings['use_auto']):
-        server = 'http://127.0.0.1'
-        port = loc_server._port
-        hmac = loc_server._hmac_secret
+    if settings['use_auto']:
+        server = 'http://localhost'
+        port = LOCAL_SERVER._port
+        hmac = LOCAL_SERVER._hmac_secret
     else:
         server = settings["server"]
         port = settings["port"]
