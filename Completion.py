@@ -4,9 +4,11 @@ from .ycmd import http_client
 from base64 import b64decode
 from json import loads
 from threading import Thread
-import os.path
+import os
 import sublime
 import sublime_plugin
+import subprocess
+
 
 PACKAGE_NAME = os.path.splitext(os.path.basename(os.path.dirname(__file__)))[0]
 ERROR_MARKER_IMG = 'Packages/{}/marker.png'.format(PACKAGE_NAME)
@@ -24,6 +26,34 @@ NO_HMAC_MESSAGE = "[Ycmd] You should generate HMAC throug the menu before using 
 NOTIFY_ERROR_MSG = "[Ycmd][Notify] Error {}"
 PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
+LOCAL_SERVER = None
+
+# Edit to support automatic start of a ycmd server instance at http://localhost:XXXX
+
+
+def start_server(settings):
+    global LOCAL_SERVER
+    ycmd_path = settings["ycmd_path"]
+    default_settings_path = settings["default_settings_path"]
+    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path, default_settings_path)
+    server_pid = str(LOCAL_SERVER._popen_handle.pid)
+    st_pid = str(os.getpid())
+    subprocess.Popen(['python', os.path.dirname(
+        os.path.abspath(__file__)) + "/ycmd/monitor.py", st_pid, server_pid])
+    if LOCAL_SERVER.IsAlive():
+        print("[Ycmd] Local Server started at : {}".format(
+            LOCAL_SERVER._server_location))
+
+
+def plugin_loaded():
+    settings = read_settings()
+    if settings['use_auto']:
+        start_server(settings)
+
+
+def plugin_unload():
+    LOCAL_SERVER.Shutdown()
+
 
 def open_user_settings():
     sublime.active_window().run_command('open_file', {'file': SETTINGS_PATH})
@@ -36,13 +66,19 @@ def active_view():
 def read_settings():
     s = sublime.load_settings(SETTINGS_NAME)
     settings = dict()
-    settings["server"] = s.get("ycmd_server", "http://127.0.0.1")
+    settings["server"] = s.get("ycmd_server", "http://localhost")
     settings["port"] = s.get("ycmd_port", 8080)
     settings["hmac"] = s.get("HMAC", '')
-    if not settings["hmac"]:
+    settings["use_auto"] = s.get("use_auto_start_localserver", 0)
+    settings["ycmd_path"] = s.get("ycmd_path", "")
+    settings["default_settings_path"] = s.get(
+        "default_settings_path", settings["ycmd_path"] + "/default_settings.json")
+
+    if (not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==") and settings['use_auto'] == 0:
         sublime.status_message(NO_HMAC_MESSAGE)
-    else:
+    elif settings['use_auto'] == 0:
         settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
+
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
     if replace:
@@ -78,13 +114,23 @@ def get_file_path(filepath=None):
         try:
             filepath = filepath.replace(from_prefix, to_prefix)
         except:
-            sublime.status_message(GET_PATH_ERROR_MSG.format(from_prefix, to_prefix))
+            sublime.status_message(
+                GET_PATH_ERROR_MSG.format(from_prefix, to_prefix))
     return filepath
 
 
 def notify_func(filepath, content, callback):
     settings = read_settings()
-    cli = http_client.YcmdClient(settings["server"], settings["port"], settings["hmac"])
+    if settings['use_auto']:
+        server = 'http://localhost'
+        port = LOCAL_SERVER._port
+        hmac = LOCAL_SERVER._hmac_secret
+    else:
+        server = settings["server"]
+        port = settings["port"]
+        hmac = settings["hmac"]
+
+    cli = http_client.YcmdClient(0, server, port, hmac)
     try:
         data = http_client.PrepareForNewFile(cli, filepath, content)
     except Exception as e:
@@ -96,7 +142,16 @@ def notify_func(filepath, content, callback):
 
 def complete_func(filepath, row, col, content, error_cb, data_cb):
     settings = read_settings()
-    cli = http_client.YcmdClient(settings["server"], settings["port"], settings["hmac"])
+    if settings['use_auto']:
+        server = 'http://localhost'
+        port = LOCAL_SERVER._port
+        hmac = LOCAL_SERVER._hmac_secret
+    else:
+        server = settings["server"]
+        port = settings["port"]
+        hmac = settings["hmac"]
+
+    cli = http_client.YcmdClient(0, server, port, hmac)
     notify_func(filepath, content, error_cb)
     try:
         data = http_client.CppSemanticCompletionResults(cli, filepath,
@@ -111,6 +166,7 @@ def complete_func(filepath, row, col, content, error_cb, data_cb):
 
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
+
     def run(self):
         HMAC_b64 = http_client.YcmdClient.GenerateHMAC()[0]
         s = sublime.load_settings(SETTINGS_NAME)
@@ -138,7 +194,8 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             return
         filepath = get_file_path()
         content = view.substr(sublime.Region(0, view.size()))
-        t = Thread(None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
+        t = Thread(
+            None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
         t.daemon = True
         t.start()
 
@@ -181,7 +238,8 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         except:
             print(NOTIFY_ERROR_MSG.format("json '{}'".format(data)))
             return
-        proposals = list(self.generate_completion_items(jsonResp['completions']))
+        proposals = list(
+            self.generate_completion_items(jsonResp['completions']))
 
         if proposals:
             active_view().run_command("hide_auto_complete")
@@ -245,8 +303,10 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             regions.append(region)
             line_regions[(region.a, region.b)] = message
         self.view_cache[view_id] = view_cache
-        style = (sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE | sublime.DRAW_SQUIGGLY_UNDERLINE)
-        view.add_regions('clang-code-errors', regions, 'invalid', ERROR_MARKER_IMG, style)
+        style = (sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE |
+                 sublime.DRAW_SQUIGGLY_UNDERLINE)
+        view.add_regions(
+            'clang-code-errors', regions, 'invalid', ERROR_MARKER_IMG, style)
 
     def generate_completion_items(self, completions):
         for completion in completions:

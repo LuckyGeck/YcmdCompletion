@@ -19,15 +19,25 @@ Sublime Text 3 plugin for C++ code completion and error highlighting, based on [
   `Preferences > Package Settings > YcmdCompletion > Settings - User`
 
 3. Prepare `Ycmd Server` (clone to your machine and build) as it is described [here](https://github.com/Valloric/ycmd#building)
-4. Generate your personal [HMAC](https://github.com/Valloric/ycmd#is-hmac-auth-for-requestsresponses-really-necessary) key.
+
+###Option 1:
+4.1 Generate your personal [HMAC](https://github.com/Valloric/ycmd#is-hmac-auth-for-requestsresponses-really-necessary) key.
   It can be done by executing additional command:
 
   `Command Palette > Ycmd: Create HMAC keys`
   
   It will be automaticaly written down to your plugin's settings. Just copy-n-paste it to settings of `ycmd`.
 
-5. Run `ycmd` with your settings. You can find [this article](https://github.com/Valloric/ycmd#user-level-customization) useful. 
-6. Open any `*.cpp` file and try to use auto-completion.
+5.1 Run `ycmd` with your settings. You can find [this article](https://github.com/Valloric/ycmd#user-level-customization) useful. 
+
+6 Open any `*.cpp` file and try to use auto-completion.
+
+###Option 2:
+4.2 Go to your personal settings and set `use_auto_start_localserver` to 1
+
+5.2 Set `ycmd_path` to point to your local installation of Ycmd Server (e.g.:`home/USERNAME/ycmd/ycmd`), and either provide the location to your settings file for the ycmd Server or ignore `default_settings_path` to use the default file that comes with ycmd.
+
+6 Open any `*.cpp` file and try to use auto-completion.
 
 ## FAQ
 

@@ -8,7 +8,11 @@ from .ycmd_events import EventEnum
 import collections
 import hmac
 import hashlib
+import json
 import os
+import socket
+import subprocess
+import tempfile
 
 
 HMAC_HEADER = 'X-Ycm-Hmac'
@@ -19,13 +23,34 @@ CODE_COMPLETIONS_HANDLER = '/completions'
 COMPLETER_COMMANDS_HANDLER = '/run_completer_command'
 EVENT_HANDLER = '/event_notification'
 EXTRA_CONF_HANDLER = '/load_extra_conf_file'
+DIR_OF_THIS_SCRIPT = os.path.dirname(os.path.abspath(__file__))
 
 
 class YcmdClient(object):
-    def __init__(self, server, port, hmac_secret):
+
+    def __init__(self, popen, server, port, hmac_secret):
+        self._popen_handle = popen
         self._port = port
         self._hmac_secret = hmac_secret
         self._server_location = "{}:{}".format(server, port)
+
+    @classmethod
+    def StartYcmdAndReturnHandle(cls, ycmd_path, default_settings_path):
+        prepared_options = json.load(open(default_settings_path))
+        hmac_secret = os.urandom(16)
+        prepared_options['hmac_secret'] = b64encode(
+            hmac_secret).decode('utf-8')
+        server_port = GetUnusedLocalhostPort()
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as options_file:
+            json.dump(prepared_options, options_file)
+            options_file.flush()
+            ycmd_args = ['python',
+                         ycmd_path,
+                         '--port={0}'.format(server_port),
+                         '--options_file={0}'.format(options_file.name),
+                         '--idle_suicide_seconds={0}'.format(3600)]
+            child_handle = subprocess.Popen(ycmd_args)
+            return cls(child_handle, "http://localhost", server_port, hmac_secret)
 
     @classmethod
     def GenerateHMAC(cls):
@@ -83,7 +108,7 @@ class YcmdClient(object):
 
     def _HmacForRequest(self, method, path, body):
         return b64encode(CreateRequestHmac(method, path, body,
-                         self._hmac_secret))
+                                           self._hmac_secret))
 
     def _BuildUri(self, handler):
         return self._server_location + handler
@@ -94,10 +119,20 @@ class YcmdClient(object):
         if isinstance(data, collections.Mapping):
             req.add_header('content-type', 'application/json')
             data = ToUtf8Json(data)
-        req.add_header(HMAC_HEADER, self._HmacForRequest(method, handler, data))
+        req.add_header(
+            HMAC_HEADER, self._HmacForRequest(method, handler, data))
         req.data = bytes(data, 'utf-8')
         readData = urlopen(req).read().decode('utf-8')
         return readData
+
+    def IsAlive(self):
+        returncode = self._popen_handle.poll()
+        # When the process hasn't finished yet, poll() returns None.
+        return returncode is None
+
+    def Shutdown(self):
+        if self.IsAlive():
+            self._popen_handle.terminate()
 
 
 def CreateRequestHmac(method, path, body, hmac_secret):
@@ -169,3 +204,12 @@ def CppSemanticCompletionResults(server, path, row, col, contents, filetype='cpp
                                             line_num=row,
                                             column_num=col,
                                             contents=contents)
+
+
+def GetUnusedLocalhostPort():
+    sock = socket.socket()
+    # This tells the OS to give us any free port in the range [1024 - 65535]
+    sock.bind(('', 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
