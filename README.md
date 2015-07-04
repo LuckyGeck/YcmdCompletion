@@ -35,8 +35,7 @@ Sublime Text 3 plugin for C++ code completion and error highlighting, based on [
 ###Option 2:
 4.2 Go to your personal settings and set `use_auto_start_localserver` to 1
 
-5.2 Set `ycmd_path` to point to your local installation of Ycmd Server (e.g.:
-`home/USERNAME/ycmd/ycmd`), and either provide the location to your settings file for the ycmd Server or ignore `default_settings_path` to use the default file that comes with ycmd.
+5.2 Set `ycmd_path` to point to your local installation of Ycmd Server (e.g.:`home/USERNAME/ycmd/ycmd`), and either provide the location to your settings file for the ycmd Server or ignore `default_settings_path` to use the default file that comes with ycmd.
 
 6 Open any `*.cpp` file and try to use auto-completion.
 
