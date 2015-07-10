@@ -1,4 +1,5 @@
 {
+  /* =====       YCMD MANUAL START MODE       =====*/
   /* [1] Server URL, where your YCMD server is started */
   "ycmd_server": "http://127.0.0.1",
   /* [2] Server's port*/
@@ -24,10 +25,25 @@
   */
   "HMAC": "_some_base64_key_here_==",
 
-  /*If you want the Plugin to automatically launch a local ycmd-Server set to 1 
-    and specify the path to your ycmd installation. for ex. /home/USERNAME/ycmd/ycmd */
-  "use_auto_start_localserver": 0,
-  "ycmd_path": "",
-  "default_settings_path":"**ycmd_path**/default_settings.json"
+  /* =====       YCMD AUTO START MODE       =====*/
+  /*
+    If you want this plugin to automatically launch local ycmd-server:
+    a) Set "use_auto_start_localserver" to 1
+    b) Specify the path to your ycmd installation.
+    Ex:
+  */
+  // "use_auto_start_localserver": 1,
+  // "ycmd_path": "/home/USERNAME/ycmd/ycmd",
 
+  /*
+    By default, plugin starts ycmd server with it's default settings (from ycmd_path + '/default_settings.json')
+    If you want to override path to ycmd settings, uncomment this:
+  */
+  // "default_settings_path":"/home/USERNAME/ycmd/ycmd/default_settings.json",
+
+  /*
+    If you want to override path to python binary, that will be used to run ycmd server
+    and other tools, uncomment this:
+  */
+  // "python_binary_path": "/usr/local/bin/python"
 }

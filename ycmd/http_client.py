@@ -35,7 +35,7 @@ class YcmdClient(object):
         self._server_location = "{}:{}".format(server, port)
 
     @classmethod
-    def StartYcmdAndReturnHandle(cls, ycmd_path, default_settings_path):
+    def StartYcmdAndReturnHandle(cls, python_path, ycmd_path, default_settings_path):
         prepared_options = json.load(open(default_settings_path))
         hmac_secret = os.urandom(16)
         prepared_options['hmac_secret'] = b64encode(
@@ -44,7 +44,7 @@ class YcmdClient(object):
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as options_file:
             json.dump(prepared_options, options_file)
             options_file.flush()
-            ycmd_args = ['python',
+            ycmd_args = [python_path,
                          ycmd_path,
                          '--port={0}'.format(server_port),
                          '--options_file={0}'.format(options_file.name),

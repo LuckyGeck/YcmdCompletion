@@ -28,24 +28,28 @@ PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
 LOCAL_SERVER = None
 
-# Edit to support automatic start of a ycmd server instance at http://localhost:XXXX
-
 
 def start_server(settings):
     global LOCAL_SERVER
     ycmd_path = settings["ycmd_path"]
     default_settings_path = settings["default_settings_path"]
-    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(ycmd_path, default_settings_path)
+    python_path = settings["python_bin"]
+    LOCAL_SERVER = http_client.YcmdClient.StartYcmdAndReturnHandle(python_path, ycmd_path,
+                                                                   default_settings_path)
     server_pid = str(LOCAL_SERVER._popen_handle.pid)
     st_pid = str(os.getpid())
-    subprocess.Popen(['python', os.path.dirname(
-        os.path.abspath(__file__)) + "/ycmd/monitor.py", st_pid, server_pid])
+    subprocess.Popen([python_path,
+                      os.path.join(os.path.dirname(os.path.abspath(__file__)), "ycmd/monitor.py"),
+                      st_pid,
+                      server_pid])
     if LOCAL_SERVER.IsAlive():
-        print("[Ycmd] Local Server started at : {}".format(
+        print("[Ycmd] Local Server started at: {}".format(
             LOCAL_SERVER._server_location))
 
 
 def plugin_loaded():
+    from imp import reload
+    reload(http_client)
     settings = read_settings()
     if settings['use_auto']:
         start_server(settings)
@@ -69,15 +73,17 @@ def read_settings():
     settings["server"] = s.get("ycmd_server", "http://localhost")
     settings["port"] = s.get("ycmd_port", 8080)
     settings["hmac"] = s.get("HMAC", '')
-    settings["use_auto"] = s.get("use_auto_start_localserver", 0)
+    settings["use_auto"] = s.get("use_auto_start_localserver", 0) == 1
     settings["ycmd_path"] = s.get("ycmd_path", "")
+    settings["python_bin"] = s.get("python_binary_path", "python")
     settings["default_settings_path"] = s.get(
-        "default_settings_path", settings["ycmd_path"] + "/default_settings.json")
+        "default_settings_path", os.path.join(settings["ycmd_path"], "default_settings.json"))
 
-    if (not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==") and settings['use_auto'] == 0:
-        sublime.status_message(NO_HMAC_MESSAGE)
-    elif settings['use_auto'] == 0:
-        settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
+    if not settings['use_auto']:
+        if not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==":
+            sublime.status_message(NO_HMAC_MESSAGE)
+        else:
+            settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
 
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
@@ -134,7 +140,7 @@ def notify_func(filepath, content, callback):
     try:
         data = http_client.PrepareForNewFile(cli, filepath, content)
     except Exception as e:
-        print(NOTIFY_ERROR_MSG.format(e))
+        print(NOTIFY_ERROR_MSG.format(e) + ' ' + server + ': ' + str(port))
         return
     if callback:
         callback(data)
