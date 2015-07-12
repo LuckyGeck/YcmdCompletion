@@ -75,14 +75,14 @@ class YcmdClient(object):
                                         contents=contents)
         return self.PostToHandler(CODE_COMPLETIONS_HANDLER, request_json)
 
-    def SendGoToRequest(self, filepath, filetype, line_num, column_num, contents):
+    def SendCompleterRequest(self,command, filepath, filetype, line_num, column_num, contents):
         request_json = BuildRequestData(filepath=filepath,
-                                        command_arguments=['GoTo'],
+                                        command_arguments=[command],
                                         filetype=filetype,
                                         line_num=line_num,
                                         column_num=column_num,
                                         contents=contents)
-        self.PostToHandler(COMPLETER_COMMANDS_HANDLER, request_json)
+        return self.PostToHandler(COMPLETER_COMMANDS_HANDLER, request_json)
 
     def SendEventNotification(self,
                               event_enum,
@@ -179,14 +179,6 @@ def BuildRequestData(filepath='',
         data['completer_target'] = completer_target
 
     return data
-
-
-def CppGotoDeclaration(server, path, row, col):
-    print("[Ycmd][GoTo] {}:{}:{}".format(path, row, col))
-    return server.SendGoToRequest(test_filename=path,
-                                  filetype='cpp',
-                                  line_num=row,
-                                  column_num=col)
 
 
 def PrepareForNewFile(server, path, contents, filetype='cpp'):

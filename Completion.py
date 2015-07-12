@@ -320,3 +320,67 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
                 continue
             insertion = completion['insertion_text']
             yield [completion.get('menu_text', insertion), insertion]
+
+
+def completer_func(command, filepath, row, col, content, completer_cb):
+    settings = read_settings()
+    if settings['use_auto']:
+        server = 'http://localhost'
+        port = LOCAL_SERVER._port
+        hmac = LOCAL_SERVER._hmac_secret
+    else:
+        server = settings["server"]
+        port = settings["port"]
+        hmac = settings["hmac"]
+
+    cli = http_client.YcmdClient(0, server, port, hmac)
+    try:
+        data = cli.SendCompleterRequest(command, filepath, 'cpp', row + 1, col + 1, content)
+
+    except Exception as e:
+        if command == 'GoTo':
+            print("[Ycmd][GoTo] > Error: {}".format(e))
+            sublime.status_message("[Ycmd][GoTo] not available")
+            return
+        elif command == 'GetType':
+            print("[Ycmd][GetType] > Error: {}".format(e))
+            sublime.status_message("[Ycmd][GetType] not available")
+            return
+        elif command == 'GetParent':
+            print("[Ycmd][GetParent] > Error: {}".format(e))
+            sublime.status_message("[Ycmd][GetParent] not available")
+            return
+        else:
+            print("[Ycmd][Completer Function] > Error: {}".format(e))
+            return
+
+    completer_cb(data, command)
+
+
+class CompleterFuncCommand(sublime_plugin.TextCommand):
+
+    def run(self, edit, command):
+        filepath = get_file_path()
+        row, col = self.view.rowcol(self.view.sel()[0].begin())
+        content = self.view.substr(sublime.Region(0, self.view.size()))
+        t = Thread(
+            None, completer_func, 'Completer_Func_Async', [command, filepath, row, col, content, self._completer_cb])
+        t.daemon = True
+        t.start()
+
+    def is_enabled(self):
+        return is_cpp(self.view)
+
+    def _completer_cb(self, data, command):
+        jsonResp = loads(data)
+        if command == 'GoTo':
+            row = jsonResp.get('line_num', 1)
+            col = jsonResp.get('column_num', 1)
+            filepath = jsonResp.get('filepath', self.view.file_name())
+            print("[Ycmd][GoTo] file: {}, row: {}, col: {}".format(filepath, row, col))
+            sublime.active_window().open_file('{}:{}:{}'.format(filepath, row, col), sublime.ENCODED_POSITION)
+        else:
+            message = "[Ycmd][{}]: ".format(command)
+            message += jsonResp.get('message', '')
+            print(message)
+            sublime.status_message(message)
