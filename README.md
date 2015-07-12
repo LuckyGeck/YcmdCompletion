@@ -39,6 +39,16 @@ Sublime Text 3 plugin for C++ code completion and error highlighting, based on [
 
 6 Open any `*.cpp` file and try to use auto-completion.
 
+## Functions
+
+YcmdCompletion now supports three new handy functions!
+
+1. `GoTo` goes to the definition of the variable under the cursor. If it's a type that the cursor is on, `GoTo` automatically recognizes that and instead opens the file that contains the declaration and jumps to the corresponding point.
+2. `GeType` shows the type of the Object in the statusbar.
+3. `GetParent` shows the enclosing function in the statusbar.
+
+**Please note that the cursor must be in front of or somewhere in the word you are calling the function for.**
+
 ## FAQ
 
 Feel free to email me with any questions about this plugin. Questions with answers are placed [here](https://github.com/LuckyGeck/YcmdCompletion/wiki/FAQ).
