@@ -31,6 +31,8 @@ LOCAL_SERVER = None
 
 def start_server(settings):
     global LOCAL_SERVER
+    if LOCAL_SERVER:
+        LOCAL_SERVER.Shutdown()
     ycmd_path = settings["ycmd_path"]
     default_settings_path = settings["default_settings_path"]
     python_path = settings["python_bin"]
@@ -140,7 +142,7 @@ def notify_func(filepath, content, callback):
     try:
         data = http_client.PrepareForNewFile(cli, filepath, content)
     except Exception as e:
-        print(NOTIFY_ERROR_MSG.format(e) + ' ' + server + ': ' + str(port))
+        print(NOTIFY_ERROR_MSG.format(e))
         return
     if callback:
         callback(data)
@@ -169,6 +171,13 @@ def complete_func(filepath, row, col, content, error_cb, data_cb):
         return
     if data_cb:
         data_cb(data)
+
+
+class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        settings = read_settings()
+        if settings['use_auto']:
+            start_server(settings)
 
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
