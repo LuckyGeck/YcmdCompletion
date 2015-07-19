@@ -75,7 +75,7 @@ class YcmdClient(object):
                                         contents=contents)
         return self.PostToHandler(CODE_COMPLETIONS_HANDLER, request_json)
 
-    def SendCompleterRequest(self,command, filepath, filetype, line_num, column_num, contents):
+    def SendCompleterCommandRequest(self, command, filepath, filetype, line_num, column_num, contents):
         request_json = BuildRequestData(filepath=filepath,
                                         command_arguments=[command],
                                         filetype=filetype,

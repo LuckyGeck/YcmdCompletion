@@ -24,6 +24,8 @@ ERROR_MESSAGE_TEMPLATE = "[{kind}] {text}"
 GET_PATH_ERROR_MSG = "[Ycmd][Path] Failed to replace '{}' -> '{}'"
 NO_HMAC_MESSAGE = "[Ycmd] You should generate HMAC throug the menu before using plugin"
 NOTIFY_ERROR_MSG = "[Ycmd][Notify] Error {}"
+PRINT_MODULE_ERROR_MESSAGE_TEMPLATE = "[Ycmd][{}] > Error: {}"
+PRINT_MODULE_NOT_AVAILABLE_TEMPLATE = "[Ycmd][{}] Command not available"
 PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
 LOCAL_SERVER = None
@@ -47,6 +49,15 @@ def start_server(settings):
     if LOCAL_SERVER.IsAlive():
         print("[Ycmd] Local Server started at: {}".format(
             LOCAL_SERVER._server_location))
+
+
+def get_client(settings=None):
+    if not settings:
+        settings = read_settings()
+    if settings['use_auto']:
+        return LOCAL_SERVER
+    else:
+        return http_client.YcmdClient(0, settings["server"], settings["port"], settings["hmac"])
 
 
 def plugin_loaded():
@@ -109,8 +120,9 @@ def get_selected_pos(view):
         return None
 
 
-def get_file_path(filepath=None):
+def get_file_path(filepath=None, reverse=False):
     ''' Turns filepath to it's modified variant (replace prefix according to settings).
+        If reverse is True, then tries to convert filepath from remote version to local.
         If filepath is None, trying to get current filepath, opened in active view.
     '''
     if not filepath:
@@ -118,6 +130,8 @@ def get_file_path(filepath=None):
     if not filepath:
         filepath = 'tmpfile.cpp'
     from_prefix, to_prefix = read_settings()["replace_file_path"]
+    if reverse:
+        from_prefix, to_prefix = to_prefix, from_prefix
     if from_prefix and to_prefix:
         try:
             filepath = filepath.replace(from_prefix, to_prefix)
@@ -128,17 +142,7 @@ def get_file_path(filepath=None):
 
 
 def notify_func(filepath, content, callback):
-    settings = read_settings()
-    if settings['use_auto']:
-        server = 'http://localhost'
-        port = LOCAL_SERVER._port
-        hmac = LOCAL_SERVER._hmac_secret
-    else:
-        server = settings["server"]
-        port = settings["port"]
-        hmac = settings["hmac"]
-
-    cli = http_client.YcmdClient(0, server, port, hmac)
+    cli = get_client()
     try:
         data = http_client.PrepareForNewFile(cli, filepath, content)
     except Exception as e:
@@ -149,18 +153,8 @@ def notify_func(filepath, content, callback):
 
 
 def complete_func(filepath, row, col, content, error_cb, data_cb):
-    settings = read_settings()
-    if settings['use_auto']:
-        server = 'http://localhost'
-        port = LOCAL_SERVER._port
-        hmac = LOCAL_SERVER._hmac_secret
-    else:
-        server = settings["server"]
-        port = settings["port"]
-        hmac = settings["hmac"]
-
-    cli = http_client.YcmdClient(0, server, port, hmac)
     notify_func(filepath, content, error_cb)
+    cli = get_client()
     try:
         data = http_client.CppSemanticCompletionResults(cli, filepath,
                                                         row + 1, col + 1,
@@ -173,6 +167,17 @@ def complete_func(filepath, row, col, content, error_cb, data_cb):
         data_cb(data)
 
 
+def completer_cmd_func(command, filepath, row, col, content, completer_cb):
+    cli = get_client()
+    try:
+        data = cli.SendCompleterCommandRequest(command, filepath, 'cpp', row + 1, col + 1, content)
+    except Exception as e:
+        print(PRINT_MODULE_ERROR_MESSAGE_TEMPLATE.format(command, e))
+        sublime.status_message(PRINT_MODULE_NOT_AVAILABLE_TEMPLATE.format(command))
+        return
+    completer_cb(data, command)
+
+
 class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
     def run(self):
         settings = read_settings()
@@ -181,7 +186,6 @@ class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
 
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
-
     def run(self):
         HMAC_b64 = http_client.YcmdClient.GenerateHMAC()[0]
         s = sublime.load_settings(SETTINGS_NAME)
@@ -209,8 +213,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             return
         filepath = get_file_path()
         content = view.substr(sublime.Region(0, view.size()))
-        t = Thread(
-            None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
+        t = Thread(None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
         t.daemon = True
         t.start()
 
@@ -253,8 +256,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         except:
             print(NOTIFY_ERROR_MSG.format("json '{}'".format(data)))
             return
-        proposals = list(
-            self.generate_completion_items(jsonResp['completions']))
+        proposals = list(self.generate_completion_items(jsonResp['completions']))
 
         if proposals:
             active_view().run_command("hide_auto_complete")
@@ -331,49 +333,14 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             yield [completion.get('menu_text', insertion), insertion]
 
 
-def completer_func(command, filepath, row, col, content, completer_cb):
-    settings = read_settings()
-    if settings['use_auto']:
-        server = 'http://localhost'
-        port = LOCAL_SERVER._port
-        hmac = LOCAL_SERVER._hmac_secret
-    else:
-        server = settings["server"]
-        port = settings["port"]
-        hmac = settings["hmac"]
-
-    cli = http_client.YcmdClient(0, server, port, hmac)
-    try:
-        data = cli.SendCompleterRequest(command, filepath, 'cpp', row + 1, col + 1, content)
-
-    except Exception as e:
-        if command == 'GoTo':
-            print("[Ycmd][GoTo] > Error: {}".format(e))
-            sublime.status_message("[Ycmd][GoTo] not available")
-            return
-        elif command == 'GetType':
-            print("[Ycmd][GetType] > Error: {}".format(e))
-            sublime.status_message("[Ycmd][GetType] not available")
-            return
-        elif command == 'GetParent':
-            print("[Ycmd][GetParent] > Error: {}".format(e))
-            sublime.status_message("[Ycmd][GetParent] not available")
-            return
-        else:
-            print("[Ycmd][Completer Function] > Error: {}".format(e))
-            return
-
-    completer_cb(data, command)
-
-
-class CompleterFuncCommand(sublime_plugin.TextCommand):
+class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, command):
         filepath = get_file_path()
         row, col = self.view.rowcol(self.view.sel()[0].begin())
         content = self.view.substr(sublime.Region(0, self.view.size()))
-        t = Thread(
-            None, completer_func, 'Completer_Func_Async', [command, filepath, row, col, content, self._completer_cb])
+        t = Thread(None, completer_cmd_func, 'ExecuteCompleterFuncAsync',
+                   [command, filepath, row, col, content, self._completer_cb])
         t.daemon = True
         t.start()
 
@@ -381,15 +348,19 @@ class CompleterFuncCommand(sublime_plugin.TextCommand):
         return is_cpp(self.view)
 
     def _completer_cb(self, data, command):
-        jsonResp = loads(data)
+        try:
+            jsonResp = loads(data)
+        except:
+            print(NOTIFY_ERROR_MSG.format("json '{}'".format(data)))
+            return
         if command == 'GoTo':
             row = jsonResp.get('line_num', 1)
             col = jsonResp.get('column_num', 1)
-            filepath = jsonResp.get('filepath', self.view.file_name())
+            filepath = get_file_path(jsonResp.get('filepath', self.view.file_name()), reverse=True)
             print("[Ycmd][GoTo] file: {}, row: {}, col: {}".format(filepath, row, col))
-            sublime.active_window().open_file('{}:{}:{}'.format(filepath, row, col), sublime.ENCODED_POSITION)
+            sublime.active_window().open_file('{}:{}:{}'.format(filepath, row, col),
+                                              sublime.ENCODED_POSITION)
         else:
-            message = "[Ycmd][{}]: ".format(command)
-            message += jsonResp.get('message', '')
+            message = "[Ycmd][{}]: {}".format(command, jsonResp.get('message', ''))
             print(message)
             sublime.status_message(message)

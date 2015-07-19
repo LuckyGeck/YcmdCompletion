@@ -18,18 +18,18 @@
         "args": { "file": "${packages}/User/YcmdCompletion.sublime-settings" }
     },
     {
-        "caption": "Ycmd: Goto",
-        "command": "completer_func",
+        "caption": "Ycmd: GoTo Definition",
+        "command": "ycmd_execute_completer_func",
         "args": {"command": "GoTo"}
     },
     {
-        "caption": "Ycmd: GetType",
-        "command": "completer_func",
+        "caption": "Ycmd: Get Type Of Current Statement",
+        "command": "ycmd_execute_completer_func",
         "args": {"command": "GetType"}
     },
     {
-        "caption": "Ycmd: GetParent",
-        "command": "completer_func",
+        "caption": "Ycmd: Get Parent For Current Statement",
+        "command": "ycmd_execute_completer_func",
         "args": {"command": "GetParent"}
-    } 
+    }
 ]
