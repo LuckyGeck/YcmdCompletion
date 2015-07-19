@@ -16,5 +16,20 @@
         "caption": "Ycmd: Settings - User",
         "command": "open_file",
         "args": { "file": "${packages}/User/YcmdCompletion.sublime-settings" }
+    },
+    {
+        "caption": "Ycmd: GoTo Definition",
+        "command": "ycmd_execute_completer_func",
+        "args": {"command": "GoTo"}
+    },
+    {
+        "caption": "Ycmd: Get Type Of Current Statement",
+        "command": "ycmd_execute_completer_func",
+        "args": {"command": "GetType"}
+    },
+    {
+        "caption": "Ycmd: Get Parent For Current Statement",
+        "command": "ycmd_execute_completer_func",
+        "args": {"command": "GetParent"}
     }
 ]
