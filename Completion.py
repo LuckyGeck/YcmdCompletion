@@ -31,9 +31,15 @@ PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 LOCAL_SERVER = None
 
 
+def print_status(msg):
+    print(msg)
+    sublime.status_message(msg)
+
+
 def start_server(settings):
     global LOCAL_SERVER
     if LOCAL_SERVER:
+        print_status('[Ycmd] Shutdown server: {}'.format(LOCAL_SERVER._server_location))
         LOCAL_SERVER.Shutdown()
     ycmd_path = settings["ycmd_path"]
     default_settings_path = settings["default_settings_path"]
@@ -47,8 +53,7 @@ def start_server(settings):
                       st_pid,
                       server_pid])
     if LOCAL_SERVER.IsAlive():
-        print("[Ycmd] Local Server started at: {}".format(
-            LOCAL_SERVER._server_location))
+        print_status("[Ycmd] Local Server started at: {}".format(LOCAL_SERVER._server_location))
 
 
 def get_client(settings=None):
@@ -65,10 +70,12 @@ def plugin_loaded():
     reload(http_client)
     settings = read_settings()
     if settings['use_auto']:
+        print('[Ycmd] Plugin loaded with autostart. Starting Ycmd.')
         start_server(settings)
 
 
 def plugin_unload():
+    print('[Ycmd] Plugin unloaded, so killing server.')
     LOCAL_SERVER.Shutdown()
 
 
@@ -94,7 +101,7 @@ def read_settings():
 
     if not settings['use_auto']:
         if not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==":
-            sublime.status_message(NO_HMAC_MESSAGE)
+            print_status(NO_HMAC_MESSAGE)
         else:
             settings["hmac"] = b64decode(settings["hmac"].encode('utf-8'))
 
@@ -136,8 +143,7 @@ def get_file_path(filepath=None, reverse=False):
         try:
             filepath = filepath.replace(from_prefix, to_prefix)
         except:
-            sublime.status_message(
-                GET_PATH_ERROR_MSG.format(from_prefix, to_prefix))
+            print_status(GET_PATH_ERROR_MSG.format(from_prefix, to_prefix))
     return filepath
 
 
@@ -361,6 +367,4 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
             sublime.active_window().open_file('{}:{}:{}'.format(filepath, row, col),
                                               sublime.ENCODED_POSITION)
         else:
-            message = "[Ycmd][{}]: {}".format(command, jsonResp.get('message', ''))
-            print(message)
-            sublime.status_message(message)
+            print_status("[Ycmd][{}]: {}".format(command, jsonResp.get('message', '')))
