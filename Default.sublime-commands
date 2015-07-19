@@ -16,5 +16,20 @@
         "caption": "Ycmd: Settings - User",
         "command": "open_file",
         "args": { "file": "${packages}/User/YcmdCompletion.sublime-settings" }
-    }
+    },
+    {
+        "caption": "Ycmd: Goto",
+        "command": "completer_func",
+        "args": {"command": "GoTo"}
+    },
+    {
+        "caption": "Ycmd: GetType",
+        "command": "completer_func",
+        "args": {"command": "GetType"}
+    },
+    {
+        "caption": "Ycmd: GetParent",
+        "command": "completer_func",
+        "args": {"command": "GetParent"}
+    } 
 ]
