@@ -22,6 +22,7 @@ SETTINGS_PATH = "${packages}/User/" + SETTINGS_NAME
 COMPLETION_ERROR_MSG = "[Ycmd][Completion] Error {}"
 COMPLETION_NOT_AVAILABLE_MSG = "[Ycmd] No completion available"
 ERROR_MESSAGE_TEMPLATE = "[{kind}] {text}"
+PANEL_ERROR_MESSAGE_TEMPLATE = "{:<5} {}"
 GET_PATH_ERROR_MSG = "[Ycmd][Path] Failed to replace '{}' -> '{}'"
 NO_HMAC_MESSAGE = "[Ycmd] You should generate HMAC throug the menu before using plugin"
 NOTIFY_ERROR_MSG = "[Ycmd][Notify] Error {}"
@@ -250,6 +251,11 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         if view_id in self.view_cache:
             del self.view_cache[view_id]
 
+    def on_activated_async(self, view):
+        if not is_cpp(view) or view.is_scratch():
+            return
+        ERROR_PANEL.update(self.view_cache)
+
     def on_query_completions(self, view, prefix, locations):
         '''Sublime Text autocompletion event handler'''
         filetype = lang(view)
@@ -306,6 +312,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
                                 [_ for _ in data
                                     if get_file_path(_['location']['filepath']) == filepath])
         self.update_statusbar(active_view(), force=True)
+        ERROR_PANEL.update(self.view_cache)
 
     def update_statusbar(self, view, force=False):
         row, col = get_selected_pos(view)
@@ -390,3 +397,62 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
                                               sublime.ENCODED_POSITION)
         else:
             print_status("[Ycmd][{}]: {}".format(command, jsonResp.get('message', '')))
+
+class YcmdErrorPanelRefresh(sublime_plugin.TextCommand):
+    def run(self, edit, data):
+        self.view.erase(edit, sublime.Region(0, self.view.size()))
+        self.view.insert(edit, 0, data)
+
+class YcmdErrorPanel(object):
+    def __init__(self):
+        self.view = None
+        self.text = ""
+
+    def update_async(self, view_cache, view=None):
+        t = Thread(None, self.update, 'PanelUpdateAsync', [view_cache, view])
+        t.daemon = True
+        t.start()
+
+    def update(self, view_cache, view=None):
+        if view == None:
+            view = active_view()
+
+        messages = []
+        lines = view_cache.get(view.id(), {})
+        for line_num, line_regions in sorted(lines.items()):
+            for msg in line_regions.values():
+                messages.append(PANEL_ERROR_MESSAGE_TEMPLATE.format(str(line_num)+':', msg))
+        self.text = '\n'.join(messages)
+        if self.is_visible():
+            self._refresh()
+
+    def is_visible(self):
+        return self.view != None and self.view.window() != None
+
+    def _refresh(self):
+        self.view.set_read_only(False)
+        self.view.set_scratch(True)
+        self.view.run_command("ycmd_error_panel_refresh", {"data": self.text})
+        self.view.set_read_only(True)
+
+    def open(self):
+        window = sublime.active_window()
+        if not self.is_visible():
+            self.view = window.create_output_panel("clang-errors")
+            syntax_file = "Packages/YcmdCompletion/ErrorPanel.tmLanguage"
+            self.view.set_syntax_file(syntax_file)
+        self._refresh()
+        window.run_command("show_panel", {"panel": "output.clang-errors"})
+
+    def close(self):
+        sublime.active_window().run_command("hide_panel", {"panel": "output.clang-errors"})
+
+ERROR_PANEL = YcmdErrorPanel()
+
+class YcmdErrorPanelShow(sublime_plugin.WindowCommand):
+    def run(self):
+        ERROR_PANEL.open()
+
+class YcmdErrorPanelHide(sublime_plugin.WindowCommand):
+    def run(self):
+        ERROR_PANEL.close()
