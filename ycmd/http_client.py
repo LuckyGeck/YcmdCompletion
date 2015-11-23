@@ -13,6 +13,7 @@ import os
 import socket
 import subprocess
 import tempfile
+import threading
 
 
 HMAC_HEADER = 'X-Ycm-Hmac'
@@ -49,7 +50,12 @@ class YcmdClient(object):
                          '--port={0}'.format(server_port),
                          '--options_file={0}'.format(options_file.name),
                          '--idle_suicide_seconds={0}'.format(3600)]
-            child_handle = subprocess.Popen(ycmd_args)
+            child_handle = subprocess.Popen(ycmd_args,
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.STDOUT)
+            t = threading.Thread(target=LogServerOutput, args=[child_handle.stdout])
+            t.daemon = True
+            t.start()
             return cls(child_handle, "http://localhost", server_port, hmac_secret)
 
     @classmethod
@@ -196,6 +202,12 @@ def CppSemanticCompletionResults(server, path, row, col, contents, filetype='cpp
                                             line_num=row,
                                             column_num=col,
                                             contents=contents)
+
+def LogServerOutput(stdout):
+    for line in iter(stdout.readline, b''):
+        s = line.decode('utf-8').rstrip()
+        print('[Ycmd][Server] {}'.format(s))
+    stdout.close()
 
 
 def GetUnusedLocalhostPort():
