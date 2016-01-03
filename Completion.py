@@ -224,6 +224,9 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
     view_line = dict()
 
     def on_selection_modified_async(self, view):
+        if view.id() == ERROR_PANEL.id():
+            ERROR_PANEL.show_code_for_error()
+            return
         if lang(view) is None or view.is_scratch():
             return
         self.update_statusbar(view)
@@ -404,9 +407,19 @@ class YcmdErrorPanelRefresh(sublime_plugin.TextCommand):
         self.view.insert(edit, 0, data)
 
 class YcmdErrorPanel(object):
-    def __init__(self):
-        self.view = None
-        self.text = ""
+    # view of this error panel
+    view = None
+    # text currently in panel
+    text = ""
+    # view with code, for with panel show errors
+    code_view = None
+    lines_to_errors = []
+
+    def id(self):
+        if self.view != None:
+            return self.view.id()
+        else:
+            return None
 
     def update_async(self, view_cache, view=None):
         t = Thread(None, self.update, 'PanelUpdateAsync', [view_cache, view])
@@ -418,11 +431,14 @@ class YcmdErrorPanel(object):
             view = active_view()
 
         messages = []
+        self.lines_to_errors = []
         lines = view_cache.get(view.id(), {})
         for line_num, line_regions in sorted(lines.items()):
-            for msg in line_regions.values():
+            for region, msg in line_regions.items():
                 messages.append(PANEL_ERROR_MESSAGE_TEMPLATE.format(str(line_num)+':', msg))
+                self.lines_to_errors.append(region)
         self.text = '\n'.join(messages)
+        self.code_view = view
         if self.is_visible():
             self._refresh()
 
@@ -434,6 +450,22 @@ class YcmdErrorPanel(object):
         self.view.set_scratch(True)
         self.view.run_command("ycmd_error_panel_refresh", {"data": self.text})
         self.view.set_read_only(True)
+
+    def show_code_for_error(self):
+        if not self.is_visible() or self.code_view == None:
+            return
+
+        # get rid of false positive (non-user interaction)
+        last_command_name, _, _ = self.view.command_history(0, False)
+        if last_command_name == 'ycmd_error_panel_refresh':
+            return
+
+        row, _ = get_selected_pos(self.view)
+        if row < len(self.lines_to_errors):
+            region = self.lines_to_errors[row]
+            # we must create sublime region, because cached region is just tuple
+            sublime_region = sublime.Region(region[0], region[1])
+            self.code_view.show_at_center(sublime_region)
 
     def open(self):
         window = sublime.active_window()
