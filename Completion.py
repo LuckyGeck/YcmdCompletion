@@ -30,6 +30,33 @@ PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
 LOCAL_SERVER = None
 
+# A map of ycmd language specifiers to Sublime scope names
+LANG_MAP = {
+    # These languages are supported, but have names which
+    # map directly to the Sublime scope name
+    # 'c': 'c',
+    # 'objc': 'objc',
+    # 'ocaml': 'ocaml',
+    # 'c++': 'c++',
+    # 'perl': 'perl',
+    # 'php': 'php',
+    # 'cs': 'cs',
+    # 'java': 'java',
+    # 'js': 'js',
+    # 'd': 'd',
+    # 'python': 'python',
+    # 'go': 'go',
+    # 'erlang': 'erlang',
+    # 'ruby': 'ruby',
+    # 'rust': 'rust',
+    # 'lua': 'lua',
+    # 'elixir': 'elixir', # needs plugin
+    'cpp': 'c++',
+    'javascript': 'js',
+    'typescript': 'ts', # needs plugin
+    'vb': 'vbnet', # needs plugin
+    'perl6': 'perl', # Sublime doesn't treat perl 6 as different
+}
 
 def print_status(msg):
     print(msg)
@@ -98,7 +125,7 @@ def read_settings():
     settings["python_bin"] = s.get("python_binary_path", "python")
     settings["default_settings_path"] = s.get(
         "default_settings_path", os.path.join(settings["ycmd_path"], "default_settings.json"))
-    settings["languages"] = [l.replace("c++", "cpp") for l in s.get("languages", ["cpp"])]
+    settings["languages"] = s.get("languages", ["cpp"])
 
     if not settings['use_auto']:
         if not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==":
@@ -114,12 +141,10 @@ def read_settings():
 
 def lang(view):
     languages = read_settings()['languages']
-    if view.match_selector(view.sel()[0].begin(), 'source.c++') and 'cpp' in languages:
-        return 'cpp'
-    elif view.match_selector(view.sel()[0].begin(), 'source.rust') and 'rust' in languages:
-        return 'rust'
-    else:
-        return ''
+    for language in languages:
+        if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP.get(language, language)):
+            return language.replace('c++', 'cpp').replace('js', 'javascript')
+    return ''
 
 def get_selected_pos(view):
     try:
