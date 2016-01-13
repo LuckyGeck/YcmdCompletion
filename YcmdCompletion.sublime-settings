@@ -49,10 +49,10 @@
 
   /*
     The languages you wish to use ycmd for.
-    Supported: cpp, rust
+    Supported: cpp, rust, python
 
     The following languages may also work, but are untested with this plugin:
-    c, erlang, java, d, lua, python,
+    c, erlang, java, d, lua,
     ocaml, js, perl, go, objc,
     cpp, cs, php, ruby, rust
 
@@ -60,5 +60,5 @@
     syntax plugin is installed:
     vb, typescript, elixir
   */
-  "languages": ["cpp"],
+  "languages": ["cpp", "python"],
 }
