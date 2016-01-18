@@ -88,6 +88,12 @@ def open_user_settings():
 def active_view():
     return sublime.active_window().active_view()
 
+def load_active_languages(settings):
+    languages = set(settings["languages"])
+    for missing_lang in languages - set(LANG_MAP.keys()):
+        print("[Ycmd] [ERROR] Language '%s' specified in settings file is not supported by ycmd" % missing_lang)
+        languages.discard(missing_lang)
+    return languages
 
 def read_settings():
     s = sublime.load_settings(SETTINGS_NAME)
@@ -111,12 +117,6 @@ def read_settings():
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
 
-    for i,language in enumerate(settings["languages"]):
-        sublime_name = LANG_MAP.get(language)
-        if sublime_name is None:
-            print("[Ycmd] Language `%s` specified in settings file is not supported by ycmd" % language)
-            del settings["languages"][i]
-
     if replace:
         settings["replace_file_path"] = (replace["from"], replace["to"])
     return settings
@@ -124,7 +124,7 @@ def read_settings():
 def lang(view):
     global USER_LANGUAGES
     if USER_LANGUAGES is None:
-        USER_LANGUAGES = read_settings()['languages']
+        USER_LANGUAGES = load_active_languages(read_settings())
     for language in USER_LANGUAGES:
         if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP[language]):
             return language.replace('c++', 'cpp').replace('js', 'javascript')
@@ -203,7 +203,7 @@ class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
 class YcmdReloadSettingsCommand(sublime_plugin.WindowCommand):
     def run(self):
         global USER_LANGUAGES
-        USER_LANGUAGES = read_settings()['languages']
+        USER_LANGUAGES = load_active_languages(read_settings())
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
     def run(self):

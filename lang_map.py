@@ -23,3 +23,4 @@ LANG_MAP = {
     'vb': 'vbnet', # needs plugin
     'perl6': 'perl', # Sublime doesn't treat perl 6 as different
 }
+
