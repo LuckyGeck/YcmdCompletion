@@ -110,6 +110,13 @@ def read_settings():
 
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
+
+    for i,language in enumerate(settings["languages"]):
+        sublime_name = LANG_MAP.get(language)
+        if sublime_name is None:
+            print("[Ycmd] Language `%s` specified in settings file is not supported by ycmd" % language)
+            del settings["languages"][i]
+
     if replace:
         settings["replace_file_path"] = (replace["from"], replace["to"])
     return settings
@@ -119,13 +126,9 @@ def lang(view):
     if USER_LANGUAGES is None:
         USER_LANGUAGES = read_settings()['languages']
     for language in USER_LANGUAGES:
-        sublime_name = LANG_MAP.get(language)
-        if sublime_name is not None:
-            if view.match_selector(view.sel()[0].begin(), 'source.%s' % sublime_name):
-                return language.replace('c++', 'cpp').replace('js', 'javascript')
-        else:
-            print("[Ycmd] Language %s specified in settings file is not supported by ycmd" % language)
-    return ''
+        if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP[language]):
+            return language.replace('c++', 'cpp').replace('js', 'javascript')
+    return None
 
 def get_selected_pos(view):
     try:
@@ -220,7 +223,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
     view_line = dict()
 
     def on_selection_modified_async(self, view):
-        if lang(view) is '' or view.is_scratch():
+        if lang(view) is None or view.is_scratch():
             return
         self.update_statusbar(view)
 
@@ -236,7 +239,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         t.start()
 
     def on_post_save_async(self, view):
-        if lang(view) is '' or view.is_scratch():
+        if lang(view) is None or view.is_scratch():
             return
         self.on_load_async(view)
 
@@ -250,7 +253,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
     def on_query_completions(self, view, prefix, locations):
         '''Sublime Text autocompletion event handler'''
         filetype = lang(view)
-        if filetype is '' or view.is_scratch():
+        if filetype is None or view.is_scratch():
             return
 
         print("[YCMD] #### START COMPLETION ####")
@@ -362,7 +365,7 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
         row, col = self.view.rowcol(self.view.sel()[0].begin())
         content = self.view.substr(sublime.Region(0, self.view.size()))
         filetype = lang(self.view)
-        if filetype is '':
+        if filetype is None:
             return
         t = Thread(None, completer_cmd_func, 'ExecuteCompleterFuncAsync',
                    [command, filepath, row, col, content, self._completer_cb, filetype])
@@ -370,7 +373,7 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
         t.start()
 
     def is_enabled(self):
-        return lang(self.view) is not ''
+        return lang(self.view) is not None
 
     def _completer_cb(self, data, command):
         try:
