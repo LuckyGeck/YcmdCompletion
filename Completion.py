@@ -8,6 +8,7 @@ import os
 import sublime
 import sublime_plugin
 import subprocess
+from .lang_map import LANG_MAP
 
 
 PACKAGE_NAME = os.path.splitext(os.path.basename(os.path.dirname(__file__)))[0]
@@ -30,33 +31,7 @@ PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
 LOCAL_SERVER = None
 
-# A map of ycmd language specifiers to Sublime scope names
-LANG_MAP = {
-    # These languages are supported, but have names which
-    # map directly to the Sublime scope name
-    # 'c': 'c',
-    # 'objc': 'objc',
-    # 'ocaml': 'ocaml',
-    # 'c++': 'c++',
-    # 'perl': 'perl',
-    # 'php': 'php',
-    # 'cs': 'cs',
-    # 'java': 'java',
-    # 'js': 'js',
-    # 'd': 'd',
-    # 'python': 'python',
-    # 'go': 'go',
-    # 'erlang': 'erlang',
-    # 'ruby': 'ruby',
-    # 'rust': 'rust',
-    # 'lua': 'lua',
-    # 'elixir': 'elixir', # needs plugin
-    'cpp': 'c++',
-    'javascript': 'js',
-    'typescript': 'ts', # needs plugin
-    'vb': 'vbnet', # needs plugin
-    'perl6': 'perl', # Sublime doesn't treat perl 6 as different
-}
+USER_LANGUAGES = None
 
 def print_status(msg):
     print(msg)
@@ -140,10 +115,16 @@ def read_settings():
     return settings
 
 def lang(view):
-    languages = read_settings()['languages']
-    for language in languages:
-        if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP.get(language, language)):
-            return language.replace('c++', 'cpp').replace('js', 'javascript')
+    global USER_LANGUAGES
+    if USER_LANGUAGES is None:
+        USER_LANGUAGES = read_settings()['languages']
+    for language in USER_LANGUAGES:
+        sublime_name = LANG_MAP.get(language)
+        if sublime_name is not None:
+            if view.match_selector(view.sel()[0].begin(), 'source.%s' % sublime_name):
+                return language.replace('c++', 'cpp').replace('js', 'javascript')
+        else:
+            print("[Ycmd] Language %s specified in settings file is not supported by ycmd" % language)
     return ''
 
 def get_selected_pos(view):
@@ -216,6 +197,10 @@ class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
         if settings['use_auto']:
             start_server(settings)
 
+class YcmdReloadSettingsCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        global USER_LANGUAGES
+        USER_LANGUAGES = read_settings()['languages']
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
     def run(self):

@@ -1,7 +1,7 @@
 YcmdCompletion
 ==============
 
-Sublime Text 3 plugin for C++, Rust, and Python code completion and error highlighting, based on [Ycmd server](https://github.com/Valloric/ycmd)
+Sublime Text 3 plugin for code completion and error highlighting, based on [Ycmd server](https://github.com/Valloric/ycmd)
 
 ## Installation
   Simply use Package Control and Install Package `YcmdCompletion`.
@@ -20,7 +20,7 @@ Sublime Text 3 plugin for C++, Rust, and Python code completion and error highli
 
 3. Prepare `Ycmd Server` (clone to your machine and build) as it is described [here](https://github.com/Valloric/ycmd#building)
 
-Note that you need to enable Rust support explicitly with a `"languages": ["cpp", "rust", "python", "c++"],` entry in your settings file. Other languages mentioned in the default settings file may also work, however this plugin has only been tested with these three. For Rust to work ycmd needs to be compiled with racer support, see the ycmd docs for more information.
+Note that you need to enable Rust/Go support explicitly by adding them to the `languages` array in the settings file. Other languages mentioned in the default settings file may also work, however this plugin has only been tested with these. For Rust and Go to work you must have compiled ycmd with the appropriate options, check out the docs for more information. This is true for most other ycmd-supported languages as well.
 
 ###Option 1:
 4.1 Generate your personal [HMAC](https://github.com/Valloric/ycmd#is-hmac-auth-for-requestsresponses-really-necessary) key.
