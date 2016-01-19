@@ -255,7 +255,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             del self.view_cache[view_id]
 
     def on_activated_async(self, view):
-        if not is_cpp(view) or view.is_scratch():
+        if lang(view) is None or view.is_scratch():
             return
         ERROR_PANEL.update(self.view_cache)
 
