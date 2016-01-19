@@ -46,4 +46,22 @@
     and other tools, uncomment this:
   */
   // "python_binary_path": "/usr/local/bin/python"
+
+  /*
+    The languages you wish to use ycmd for.
+    Supported: cpp, rust, python, go
+
+    The following languages may also work, but are untested with this plugin:
+    c, erlang, java, d, lua,
+    ocaml, js, perl, objc,
+    cs, php, ruby, rust
+
+    These languages may also work if the corresponding Sublime
+    syntax plugin is installed:
+    vb, typescript, elixir
+
+    Be sure to run the "Reload language list from settings" command
+    after editing this setting
+  */
+  "languages": ["cpp", "python"],
 }

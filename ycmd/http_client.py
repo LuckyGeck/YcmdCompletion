@@ -187,7 +187,7 @@ def BuildRequestData(filepath='',
     return data
 
 
-def PrepareForNewFile(server, path, contents, filetype='cpp'):
+def PrepareForNewFile(server, path, contents, filetype):
     print("[Ycmd][Notify] {}".format(path))
     return server.SendEventNotification(EventEnum.FileReadyToParse,
                                         filepath=path,
@@ -195,7 +195,7 @@ def PrepareForNewFile(server, path, contents, filetype='cpp'):
                                         contents=contents)
 
 
-def CppSemanticCompletionResults(server, path, row, col, contents, filetype='cpp'):
+def SemanticCompletionResults(server, path, row, col, contents, filetype):
     print("[Ycmd][Completion] for {}:{}:{}".format(path, row, col))
     return server.SendCodeCompletionRequest(filepath=path,
                                             filetype=filetype,

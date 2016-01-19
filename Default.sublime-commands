@@ -8,6 +8,10 @@
         "command": "ycmd_restart_server"
     },
     {
+        "caption": "Ycmd: Reload language list from settings",
+        "command": "ycmd_reload_settings"
+    },
+    {
         "caption": "Ycmd: Settings - Default",
         "command": "open_file",
         "args": { "file": "${packages}/YcmdCompletion/YcmdCompletion.sublime-settings" }

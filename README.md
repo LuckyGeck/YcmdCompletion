@@ -1,7 +1,7 @@
 YcmdCompletion
 ==============
 
-Sublime Text 3 plugin for C++ code completion and error highlighting, based on [Ycmd server](https://github.com/Valloric/ycmd)
+Sublime Text 3 plugin for code completion and error highlighting, based on [Ycmd server](https://github.com/Valloric/ycmd)
 
 ## Installation
   Simply use Package Control and Install Package `YcmdCompletion`.
@@ -20,6 +20,8 @@ Sublime Text 3 plugin for C++ code completion and error highlighting, based on [
 
 3. Prepare `Ycmd Server` (clone to your machine and build) as it is described [here](https://github.com/Valloric/ycmd#building)
 
+Note that you need to enable Rust/Go support explicitly by adding them to the `languages` array in the settings file. Other languages mentioned in the default settings file may also work, however this plugin has only been tested with these. For Rust and Go to work you must have compiled ycmd with the appropriate options, check out the docs for more information. This is true for most other ycmd-supported languages as well.
+
 ###Option 1:
 4.1 Generate your personal [HMAC](https://github.com/Valloric/ycmd#is-hmac-auth-for-requestsresponses-really-necessary) key.
   It can be done by executing additional command:
@@ -30,14 +32,14 @@ Sublime Text 3 plugin for C++ code completion and error highlighting, based on [
 
 5.1 Run `ycmd` with your settings. You can find [this article](https://github.com/Valloric/ycmd#user-level-customization) useful. 
 
-6 Open any `*.cpp` file and try to use auto-completion.
+6 Open any `*.cpp` or `*.py` file and try to use auto-completion.
 
 ###Option 2:
 4.2 Go to your personal settings and set `use_auto_start_localserver` to 1
 
 5.2 Set `ycmd_path` to point to your local installation of Ycmd Server (e.g.:`home/USERNAME/ycmd/ycmd`), and either provide the location to your settings file for the ycmd Server or ignore `default_settings_path` to use the default file that comes with ycmd.
 
-6 Open any `*.cpp` file and try to use auto-completion.
+6 Open any `*.cpp` or `*.py` file and try to use auto-completion.
 
 ## Functions
 

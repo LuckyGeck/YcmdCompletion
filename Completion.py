@@ -8,6 +8,7 @@ import os
 import sublime
 import sublime_plugin
 import subprocess
+from .lang_map import LANG_MAP
 
 
 PACKAGE_NAME = os.path.splitext(os.path.basename(os.path.dirname(__file__)))[0]
@@ -30,6 +31,7 @@ PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
 
 LOCAL_SERVER = None
 
+USER_LANGUAGES = None
 
 def print_status(msg):
     print(msg)
@@ -86,6 +88,12 @@ def open_user_settings():
 def active_view():
     return sublime.active_window().active_view()
 
+def load_active_languages(settings):
+    languages = set(settings["languages"])
+    for missing_lang in languages - set(LANG_MAP.keys()):
+        print("[Ycmd] [ERROR] Language '%s' specified in settings file is not supported by ycmd" % missing_lang)
+        languages.discard(missing_lang)
+    return languages
 
 def read_settings():
     s = sublime.load_settings(SETTINGS_NAME)
@@ -98,6 +106,7 @@ def read_settings():
     settings["python_bin"] = s.get("python_binary_path", "python")
     settings["default_settings_path"] = s.get(
         "default_settings_path", os.path.join(settings["ycmd_path"], "default_settings.json"))
+    settings["languages"] = s.get("languages", ["cpp"])
 
     if not settings['use_auto']:
         if not settings["hmac"] or str(settings['hmac']) == "_some_base64_key_here_==":
@@ -107,18 +116,19 @@ def read_settings():
 
     settings["replace_file_path"] = (None, None)
     replace = s.get("ycmd_filepath_replace", {})
+
     if replace:
         settings["replace_file_path"] = (replace["from"], replace["to"])
     return settings
 
-
-def is_cpp(view):
-    '''Determine if the given view location is c++ code'''
-    try:
-        return view.match_selector(view.sel()[0].begin(), 'source.c++')
-    except:
-        return False
-
+def lang(view):
+    global USER_LANGUAGES
+    if USER_LANGUAGES is None:
+        USER_LANGUAGES = load_active_languages(read_settings())
+    for language in USER_LANGUAGES:
+        if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP[language]):
+            return language.replace('c++', 'cpp').replace('js', 'javascript')
+    return None
 
 def get_selected_pos(view):
     try:
@@ -128,7 +138,7 @@ def get_selected_pos(view):
 
 
 def get_file_path(filepath=None, reverse=False):
-    ''' Turns filepath to it's modified variant (replace prefix according to settings).
+    ''' Turns filepath to its modified variant (replace prefix according to settings).
         If reverse is True, then tries to convert filepath from remote version to local.
         If filepath is None, trying to get current filepath, opened in active view.
     '''
@@ -147,10 +157,10 @@ def get_file_path(filepath=None, reverse=False):
     return filepath
 
 
-def notify_func(filepath, content, callback):
+def notify_func(filepath, content, callback, filetype):
     cli = get_client()
     try:
-        data = http_client.PrepareForNewFile(cli, filepath, content)
+        data = http_client.PrepareForNewFile(cli, filepath, content, filetype)
     except Exception as e:
         print(NOTIFY_ERROR_MSG.format(e))
         return
@@ -158,13 +168,13 @@ def notify_func(filepath, content, callback):
         callback(data)
 
 
-def complete_func(filepath, row, col, content, error_cb, data_cb):
-    notify_func(filepath, content, error_cb)
+def complete_func(filepath, row, col, content, error_cb, data_cb, filetype):
+    notify_func(filepath, content, error_cb, filetype)
     cli = get_client()
     try:
-        data = http_client.CppSemanticCompletionResults(cli, filepath,
-                                                        row + 1, col + 1,
-                                                        content)
+        data = http_client.SemanticCompletionResults(cli, filepath,
+                                                     row + 1, col + 1,
+                                                     content, filetype)
     except Exception as e:
         print(COMPLETION_ERROR_MSG.format(e))
         sublime.status_message(COMPLETION_NOT_AVAILABLE_MSG)
@@ -173,10 +183,10 @@ def complete_func(filepath, row, col, content, error_cb, data_cb):
         data_cb(data)
 
 
-def completer_cmd_func(command, filepath, row, col, content, completer_cb):
+def completer_cmd_func(command, filepath, row, col, content, completer_cb, filetype):
     cli = get_client()
     try:
-        data = cli.SendCompleterCommandRequest(command, filepath, 'cpp', row + 1, col + 1, content)
+        data = cli.SendCompleterCommandRequest(command, filepath, filetype, row + 1, col + 1, content)
     except Exception as e:
         print(PRINT_MODULE_ERROR_MESSAGE_TEMPLATE.format(command, e))
         sublime.status_message(PRINT_MODULE_NOT_AVAILABLE_TEMPLATE.format(command))
@@ -190,6 +200,10 @@ class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
         if settings['use_auto']:
             start_server(settings)
 
+class YcmdReloadSettingsCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        global USER_LANGUAGES
+        USER_LANGUAGES = load_active_languages(read_settings())
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
     def run(self):
@@ -209,22 +223,23 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
     view_line = dict()
 
     def on_selection_modified_async(self, view):
-        if not is_cpp(view) or view.is_scratch():
+        if lang(view) is None or view.is_scratch():
             return
         self.update_statusbar(view)
 
     def on_load_async(self, view):
         '''Called when the file is finished loading'''
-        if not is_cpp(view) or view.is_scratch():
+        filetype = lang(view)
+        if filetype is '' or view.is_scratch():
             return
         filepath = get_file_path()
         content = view.substr(sublime.Region(0, view.size()))
-        t = Thread(None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors])
+        t = Thread(None, notify_func, 'NotifyAsync', [filepath, content, self._on_errors, filetype])
         t.daemon = True
         t.start()
 
     def on_post_save_async(self, view):
-        if not is_cpp(view) or view.is_scratch():
+        if lang(view) is None or view.is_scratch():
             return
         self.on_load_async(view)
 
@@ -237,7 +252,8 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
 
     def on_query_completions(self, view, prefix, locations):
         '''Sublime Text autocompletion event handler'''
-        if not is_cpp(view) or view.is_scratch():
+        filetype = lang(view)
+        if filetype is None or view.is_scratch():
             return
 
         print("[YCMD] #### START COMPLETION ####")
@@ -252,7 +268,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
         row, col = view.rowcol(locations[0])
         content = view.substr(sublime.Region(0, view.size()))
         t = Thread(None, complete_func, 'CompleteAsync',
-                   [filepath, row, col, content, self._on_errors, self._complete])
+                   [filepath, row, col, content, self._on_errors, self._complete, filetype])
         t.daemon = True
         t.start()
 
@@ -336,7 +352,10 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
             if not 'insertion_text' in completion:
                 continue
             insertion = completion['insertion_text']
-            yield [completion.get('menu_text', insertion), insertion]
+            if 'extra_menu_info' in completion:
+                yield ["{0}\t{1}".format(insertion, completion['extra_menu_info']), insertion]
+            else:
+                yield [insertion, insertion]
 
 
 class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
@@ -345,13 +364,16 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
         filepath = get_file_path()
         row, col = self.view.rowcol(self.view.sel()[0].begin())
         content = self.view.substr(sublime.Region(0, self.view.size()))
+        filetype = lang(self.view)
+        if filetype is None:
+            return
         t = Thread(None, completer_cmd_func, 'ExecuteCompleterFuncAsync',
-                   [command, filepath, row, col, content, self._completer_cb])
+                   [command, filepath, row, col, content, self._completer_cb, filetype])
         t.daemon = True
         t.start()
 
     def is_enabled(self):
-        return is_cpp(self.view)
+        return lang(self.view) is not None
 
     def _completer_cb(self, data, command):
         try:
