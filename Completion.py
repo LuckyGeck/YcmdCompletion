@@ -16,9 +16,9 @@ ERROR_MARKER_IMG = 'Packages/{}/marker.png'.format(PACKAGE_NAME)
 SETTINGS_NAME = "{}.sublime-settings".format(PACKAGE_NAME)
 SETTINGS_PATH = "${packages}/User/" + SETTINGS_NAME
 
-##                    ##
+########################
 #  MESSAGES TEMPLATES  #
-##                    ##
+########################
 COMPLETION_ERROR_MSG = "[Ycmd][Completion] Error {}"
 COMPLETION_NOT_AVAILABLE_MSG = "[Ycmd] No completion available"
 ERROR_MESSAGE_TEMPLATE = "[{kind}] {text}"
@@ -29,10 +29,12 @@ NOTIFY_ERROR_MSG = "[Ycmd][Notify] Error {}"
 PRINT_MODULE_ERROR_MESSAGE_TEMPLATE = "[Ycmd][{}] > Error: {}"
 PRINT_MODULE_NOT_AVAILABLE_TEMPLATE = "[Ycmd][{}] Command not available"
 PRINT_ERROR_MESSAGE_TEMPLATE = "[Ycmd] > {} ({},{})"
+LANGUAGE_NOT_SUPPORTED_MSG = "[Ycmd][ConfigError] Language '{}' specified " \
+                             "in settings file is not supported by ycmd"
 
 LOCAL_SERVER = None
-
 USER_LANGUAGES = None
+
 
 def print_status(msg):
     print(msg)
@@ -89,12 +91,14 @@ def open_user_settings():
 def active_view():
     return sublime.active_window().active_view()
 
+
 def load_active_languages(settings):
     languages = set(settings["languages"])
     for missing_lang in languages - set(LANG_MAP.keys()):
-        print("[Ycmd] [ERROR] Language '%s' specified in settings file is not supported by ycmd" % missing_lang)
+        print_status(LANGUAGE_NOT_SUPPORTED_MSG.format(missing_lang))
         languages.discard(missing_lang)
     return languages
+
 
 def read_settings():
     s = sublime.load_settings(SETTINGS_NAME)
@@ -122,6 +126,7 @@ def read_settings():
         settings["replace_file_path"] = (replace["from"], replace["to"])
     return settings
 
+
 def lang(view):
     global USER_LANGUAGES
     if USER_LANGUAGES is None:
@@ -130,6 +135,7 @@ def lang(view):
         if view.match_selector(view.sel()[0].begin(), 'source.%s' % LANG_MAP[language]):
             return language.replace('c++', 'cpp').replace('js', 'javascript')
     return None
+
 
 def get_selected_pos(view):
     try:
@@ -187,7 +193,8 @@ def complete_func(filepath, row, col, content, error_cb, data_cb, filetype):
 def completer_cmd_func(command, filepath, row, col, content, completer_cb, filetype):
     cli = get_client()
     try:
-        data = cli.SendCompleterCommandRequest(command, filepath, filetype, row + 1, col + 1, content)
+        data = cli.SendCompleterCommandRequest(command, filepath, filetype,
+                                               row + 1, col + 1, content)
     except Exception as e:
         print(PRINT_MODULE_ERROR_MESSAGE_TEMPLATE.format(command, e))
         sublime.status_message(PRINT_MODULE_NOT_AVAILABLE_TEMPLATE.format(command))
@@ -201,10 +208,12 @@ class YcmdRestartServerCommand(sublime_plugin.WindowCommand):
         if settings['use_auto']:
             start_server(settings)
 
+
 class YcmdReloadSettingsCommand(sublime_plugin.WindowCommand):
     def run(self):
         global USER_LANGUAGES
         USER_LANGUAGES = load_active_languages(read_settings())
+
 
 class YcmdCreateHmacPairCommand(sublime_plugin.WindowCommand):
     def run(self):
@@ -359,7 +368,7 @@ class YcmdCompletionEventListener(sublime_plugin.EventListener):
 
     def generate_completion_items(self, completions):
         for completion in completions:
-            if not 'insertion_text' in completion:
+            if 'insertion_text' not in completion:
                 continue
             insertion = completion['insertion_text']
             if 'extra_menu_info' in completion:
@@ -401,10 +410,12 @@ class YcmdExecuteCompleterFuncCommand(sublime_plugin.TextCommand):
         else:
             print_status("[Ycmd][{}]: {}".format(command, jsonResp.get('message', '')))
 
+
 class YcmdErrorPanelRefresh(sublime_plugin.TextCommand):
     def run(self, edit, data):
         self.view.erase(edit, sublime.Region(0, self.view.size()))
         self.view.insert(edit, 0, data)
+
 
 class YcmdErrorPanel(object):
     # view of this error panel
@@ -416,7 +427,7 @@ class YcmdErrorPanel(object):
     lines_to_errors = []
 
     def id(self):
-        if self.view != None:
+        if self.view is not None:
             return self.view.id()
         else:
             return None
@@ -427,7 +438,7 @@ class YcmdErrorPanel(object):
         t.start()
 
     def update(self, view_cache, view=None):
-        if view == None:
+        if view is None:
             view = active_view()
 
         messages = []
@@ -435,7 +446,7 @@ class YcmdErrorPanel(object):
         lines = view_cache.get(view.id(), {})
         for line_num, line_regions in sorted(lines.items()):
             for region, msg in line_regions.items():
-                messages.append(PANEL_ERROR_MESSAGE_TEMPLATE.format(str(line_num)+':', msg))
+                messages.append(PANEL_ERROR_MESSAGE_TEMPLATE.format(str(line_num) + ':', msg))
                 self.lines_to_errors.append(region)
         self.text = '\n'.join(messages)
         self.code_view = view
@@ -443,7 +454,7 @@ class YcmdErrorPanel(object):
             self._refresh()
 
     def is_visible(self):
-        return self.view != None and self.view.window() != None
+        return self.view is not None and self.view.window() is not None
 
     def _refresh(self):
         self.view.set_read_only(False)
@@ -452,7 +463,7 @@ class YcmdErrorPanel(object):
         self.view.set_read_only(True)
 
     def show_code_for_error(self):
-        if not self.is_visible() or self.code_view == None:
+        if not self.is_visible() or self.code_view is None:
             return
 
         # get rid of false positive (non-user interaction)
@@ -481,9 +492,11 @@ class YcmdErrorPanel(object):
 
 ERROR_PANEL = YcmdErrorPanel()
 
+
 class YcmdErrorPanelShow(sublime_plugin.WindowCommand):
     def run(self):
         ERROR_PANEL.open()
+
 
 class YcmdErrorPanelHide(sublime_plugin.WindowCommand):
     def run(self):
