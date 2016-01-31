@@ -35,5 +35,13 @@
         "caption": "Ycmd: Get Parent For Current Statement",
         "command": "ycmd_execute_completer_func",
         "args": {"command": "GetParent"}
+    },
+    {
+        "caption": "Ycmd: Show Error Panel",
+        "command": "ycmd_error_panel_show"
+    },
+    {
+        "caption": "Ycmd: Hide Error Panel",
+        "command": "ycmd_error_panel_hide"
     }
 ]

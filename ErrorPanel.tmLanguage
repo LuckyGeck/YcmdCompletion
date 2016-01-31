@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>fileTypes</key>
+	<array>
+	</array>
+	<key>name</key>
+	<string>YcmdErrorPanel</string>
+	<key>patterns</key>
+	<array>
+		<dict>
+			<key>comment</key>
+			<string>Warnings</string>
+			<key>match</key>
+			<string>^.* \[WARNING\].*$</string>
+			<key>name</key>
+			<string>string.quoted.double.c</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>Errors</string>
+			<key>match</key>
+			<string>^.* \[ERROR\].*$</string>
+			<key>name</key>
+			<string>keyword.control.c</string>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>text.ycmdcompletion</string>
+	<key>uuid</key>
+	<string>1a8564ce-f89e-4e0d-8f14-40c5d2a202e5</string>
+</dict>
+</plist>
