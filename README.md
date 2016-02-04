@@ -55,6 +55,25 @@ YcmdCompletion now supports three new handy functions!
 
 Feel free to email me with any questions about this plugin. Questions with answers are placed [here](https://github.com/LuckyGeck/YcmdCompletion/wiki/FAQ).
 
+## Miscellaneous enhancements
+
+By default, Sublime only shows the autocomplete dialog when you have started typing a word. This means that field and path autocompletion only occur after you type the first character of the field or path (e.g. only after typing `x` in `foo::x` or `foo.x`). To make it appear when you have typed `foo::` or `foo.` and show the full range of path/field/method autocompletions, you need to add a syntax-specific config file to Sublime.
+
+To do this, open a file of the language you wish to tweak, go to `Preferences -> Settings - More -> Syntax Specific - User`, and add an autocomplete specification like so:
+
+```
+{
+    "auto_complete_selector": "source - (comment, string.quoted)",
+    "auto_complete_triggers": [ 
+        {"selector": "source.c++", "characters": "."},
+        {"selector": "source.c++", "characters": "::"} 
+        {"selector": "source.c++", "characters": "->"} 
+    ]
+}
+``` 
+
+The ` - (comment, string.quoted)` means that autocompletion will not complete within comments or strings (you can remove this if you don't need it). Depending on your language, you may need to modify the triggers.
+
 ## License
 
 Copyright 2014 [Pavel Sychev](pasha.sychev@gmail.com). Licensed under the MIT License
