@@ -3,8 +3,10 @@
 
 from base64 import b64encode
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 from .wrapper_utils import ToUtf8Json
 from .ycmd_events import EventEnum
+from .exceptions import UnknownExtraConf
 import collections
 import hmac
 import hashlib
@@ -24,6 +26,7 @@ CODE_COMPLETIONS_HANDLER = '/completions'
 COMPLETER_COMMANDS_HANDLER = '/run_completer_command'
 EVENT_HANDLER = '/event_notification'
 EXTRA_CONF_HANDLER = '/load_extra_conf_file'
+IGNORE_EXTRA_CONF_HANDLER = '/ignore_extra_conf_file'
 DIR_OF_THIS_SCRIPT = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -112,6 +115,10 @@ class YcmdClient(object):
         request_json = {'filepath': extra_conf_filename}
         self.PostToHandler(EXTRA_CONF_HANDLER, request_json)
 
+    def IgnoreExtraConfFile(self, extra_conf_filename):
+        request_json = {'filepath': extra_conf_filename}
+        self.PostToHandler(IGNORE_EXTRA_CONF_HANDLER, request_json)
+
     def _HmacForRequest(self, method, path, body):
         return b64encode(CreateRequestHmac(method, path, body,
                                            self._hmac_secret))
@@ -128,8 +135,15 @@ class YcmdClient(object):
         req.add_header(
             HMAC_HEADER, self._HmacForRequest(method, handler, data))
         req.data = bytes(data, 'utf-8')
-        readData = urlopen(req).read().decode('utf-8')
-        return readData
+        try:
+            readData = urlopen(req).read().decode('utf-8')
+            return readData
+        except HTTPError as err:
+            if err.code == 500:
+                responseAsJson = json.loads( err.read().decode('utf-8') )
+                if responseAsJson['exception']['TYPE'] == "UnknownExtraConf":
+                    raise UnknownExtraConf(responseAsJson['exception']['extra_conf_file'])
+            raise err
 
     def IsAlive(self):
         returncode = self._popen_handle.poll()

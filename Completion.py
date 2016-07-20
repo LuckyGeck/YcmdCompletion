@@ -1,6 +1,6 @@
 # -*- coding: utf8 -*-
 
-from .ycmd import http_client
+from .ycmd import http_client, exceptions
 from base64 import b64decode
 from json import loads
 from threading import Thread
@@ -168,6 +168,12 @@ def notify_func(filepath, content, callback, filetype):
     cli = get_client()
     try:
         data = http_client.PrepareForNewFile(cli, filepath, content, filetype)
+    except exceptions.UnknownExtraConf as e:
+        if sublime.ok_cancel_dialog(str(e)):
+            cli.LoadExtraConfFile(e.extra_conf_file)
+        else:
+            cli.IgnoreExtraConfFile(e.extra_conf_file)
+        return
     except Exception as e:
         print(NOTIFY_ERROR_MSG.format(e))
         return
