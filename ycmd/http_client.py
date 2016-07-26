@@ -140,7 +140,7 @@ class YcmdClient(object):
             return readData
         except HTTPError as err:
             if err.code == 500:
-                responseAsJson = json.loads( err.read().decode('utf-8') )
+                responseAsJson = json.loads(err.read().decode('utf-8'))
                 if responseAsJson['exception']['TYPE'] == "UnknownExtraConf":
                     raise UnknownExtraConf(responseAsJson['exception']['extra_conf_file'])
             raise err
