@@ -2,6 +2,7 @@
 LANG_MAP = {
     'c': 'c',
     'objc': 'objc',
+    'objc++': 'objc++',
     'ocaml': 'ocaml',
     'c++': 'c++',
     'perl': 'perl',
