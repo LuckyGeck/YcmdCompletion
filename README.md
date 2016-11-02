@@ -64,10 +64,10 @@ To do this, open a file of the language you wish to tweak, go to `Preferences ->
 ```
 {
     "auto_complete_selector": "source - (comment, string.quoted)",
-    "auto_complete_triggers": [ 
+    "auto_complete_triggers": [
         {"selector": "source.c++", "characters": "."},
-        {"selector": "source.c++", "characters": "::"} 
-        {"selector": "source.c++", "characters": "->"} 
+        {"selector": "source.c++", "characters": "::"},
+        {"selector": "source.c++", "characters": "->"}
     ]
 }
 ``` 
